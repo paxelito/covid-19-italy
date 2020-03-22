@@ -135,4 +135,4 @@ dmypy.json
 .idea/misc.xml
 .idea/modules.xml
 .idea/vcs.xml
-notebooks/
+.ipynb_checkpoints/
