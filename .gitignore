@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+src/
 lib64/
 parts/
 sdist/
@@ -126,6 +126,7 @@ venv.bak/
 dmypy.json
 
 # Pyre type checker
+.idea/
 .pyre/
 .idea/$CACHE_FILE$
 .idea/.gitignore
