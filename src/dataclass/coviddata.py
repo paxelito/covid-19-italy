@@ -25,6 +25,7 @@ class ItalianCovidData:
         self.yesterday = date.today() - timedelta(days=1)
 
     def data_summary(self):
+        print(f"--- Latest Update: {self.today} ---\n")
         print("\n --- REGIONS DATASET --- \n")
         print(self.regions_data_json.info())
         print("\n --- CITIES DATASET --- \n")
@@ -56,7 +57,7 @@ class ItalianCovidData:
                           data=self.cities_data_json.query(f"denominazione_regione == '{region}'"),
                           )
         plt.subplot(1, 2, 2)
-        ax.set_ylabel("Totale Cases")
+        ax.set_ylabel("Total Cases")
         bx = sns.lineplot(x="data",
                           y="totale_casi",
                           hue="sigla_provincia",
@@ -72,7 +73,7 @@ class ItalianCovidData:
 
     def plot_region_indicators(self, regions_area):
         self._plot_regions(self.cities_data_json, regions_area, 'totale_casi')
-        vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi']#, 'ratio_positivi', 'mortality']
+        vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi', 'ratio_positivi', 'mortality']
         for var_of_interest in vars_of_interest:
             self._plot_regions(data=self.regions_data_json,
                                data_filter=regions_area,
