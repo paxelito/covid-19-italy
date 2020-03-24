@@ -20,7 +20,6 @@ class ItalianCovidData:
         self.regions_data_json["mortality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
 
         self.today = date.today()
-        self.yesterday = date.today() - timedelta(days=1)
 
     def data_summary(self):
         print(f"--- Latest Update: {self.today} ---\n")
@@ -29,8 +28,8 @@ class ItalianCovidData:
         print("\n --- CITIES DATASET --- \n")
         print(self.cities_data_json.info())
 
-    def show_map_cases(self, today=True):
-        filter_time = self.today.strftime('%Y-%m-%d') if today else self.yesterday.strftime('%Y-%m-%d')
+    def show_map_cases(self, current_date=None):
+        filter_time = self.today.strftime('%Y-%m-%d') if not current_date else current_date
         today_data_json = self.cities_data_json.loc[(self.cities_data_json['data'] == filter_time) & (self.cities_data_json['sigla_provincia'] != "")]
         ax = self.map_df.plot(figsize=(10, 10), alpha=0.4, edgecolor='k')
         today_data_json.plot(kind="scatter",
@@ -65,6 +64,7 @@ class ItalianCovidData:
                           )
         bx.set_yscale('log')
         bx.set_ylabel("log(Total Cases)")
+        plt.grid(True, which="both", ls="--", c='gray')
         plt.draw()
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         bx.set_xticklabels(bx.get_xticklabels(), rotation=90)
@@ -101,6 +101,7 @@ class ItalianCovidData:
                           )
         bx.set_yscale("log")
         bx.set_ylabel(f"log({y})")
+        plt.grid(True, which="both")
         plt.draw()
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         bx.set_xticklabels(bx.get_xticklabels(), rotation=90)
