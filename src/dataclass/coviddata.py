@@ -19,8 +19,6 @@ class ItalianCovidData:
         self.regions_data_json["ratio_positivi"] = self.regions_data_json["nuovi_attualmente_positivi"] / self.regions_data_json["tamponi"]
         self.regions_data_json["mortality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
 
-        self.avg_growth_rate_window = avg_growth_rate_window
-
         self.today = date.today()
         self.yesterday = date.today() - timedelta(days=1)
 
@@ -85,6 +83,7 @@ class ItalianCovidData:
         plt.subplot(1, 2, 1)
         ax = sns.lineplot(x="data",
                           y=y,
+
                           hue="denominazione_regione",
                           data=data.query(f"denominazione_regione in {data_filter}"),
                           linestyle='dotted',
@@ -106,7 +105,7 @@ class ItalianCovidData:
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         bx.set_xticklabels(bx.get_xticklabels(), rotation=90)
 
-    def growth_rates(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi'):
+    def growth_rates(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi', grw=7):
         data = self.regions_data_json if regions else self.cities_data_json
         growth_rates = dict()
         for area in areas:
@@ -123,8 +122,8 @@ class ItalianCovidData:
             growth_rate_n, growth_rate_date = zip(*growth_rates[area]['growth_rate'])
 
             avg_gr = list()
-            for idx, g in enumerate(growth_rate_n[0:len(growth_rate_n) - self.avg_growth_rate_window + 1]):
-                avg_gr.append(np.mean(growth_rate_n[idx:idx + self.avg_growth_rate_window]))
+            for idx, g in enumerate(growth_rate_n[0:len(growth_rate_n) - grw + 1]):
+                avg_gr.append(np.mean(growth_rate_n[idx:idx + grw]))
 
             growth_rates[area]['avg_growth_rate'] = avg_gr
 
@@ -140,14 +139,14 @@ class ItalianCovidData:
             )
             plt.xlabel("Date (data starts from case 0)")
             plt.ylabel("Growth Rate")
-            plt.title(f"Daily Growth Rate")
+            plt.title(f"Daily Growth Rate ({indicator})")
         plt.legend(areas)
         plt.xticks(rotation=90)
         plt.subplot(1, 2, 2)
         for area in areas:
             plt.plot(growth_rates[area]['avg_growth_rate'][:], linestyle='solid', marker="o")
-            plt.xlabel(f"Average growth Factor (Floating window: {self.avg_growth_rate_window} days) from case 0")
+            plt.xlabel(f"Average growth Factor (Floating window: {grw} days) from case 0")
             plt.ylabel("AVG Growth Factor")
-            plt.title(f"AVG Daily Growth Factor)")
+            plt.title(f"AVG Daily Growth Factor ({indicator})")
         plt.legend(areas)
         plt.draw()
