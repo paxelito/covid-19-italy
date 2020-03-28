@@ -71,7 +71,7 @@ class ItalianCovidData:
 
     def plot_region_indicators(self, regions_area):
         self._plot_regions(self.cities_data_json, regions_area, 'totale_casi')
-        vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi']#, 'ratio_positivi', 'mortality']
+        vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi']#, 'ratio_positivi']#, 'mortality']
         for var_of_interest in vars_of_interest:
             self._plot_regions(data=self.regions_data_json,
                                data_filter=regions_area,
