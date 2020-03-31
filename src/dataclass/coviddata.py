@@ -16,7 +16,7 @@ class ItalianCovidData:
         self.map_df = gpd.read_file(ITALY_MAP)
 
         self.regions_data_json["data"] = pd.to_datetime(self.regions_data_json["data"]).dt.strftime('%Y-%m-%d')
-        self.regions_data_json["ratio_positivi"] = self.regions_data_json["nuovi_attualmente_positivi"] / self.regions_data_json["tamponi"]
+        self.regions_data_json["ratio_positivi"] = self.regions_data_json["nuovi_positivi"] / self.regions_data_json["tamponi"]
         self.regions_data_json["mortality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
 
         self.today = date.today()

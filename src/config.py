@@ -9,7 +9,7 @@ ITALY_MAP = fp = os.path.abspath(os.path.join(COVID_DATA_FOLDER, "aree/shp/dpc-c
 AVG_GROWTH_RATE_WINDOW = 7
 
 NW_REGIONS = ["Lombardia", "Piemonte", "Valle d'Aosta", "Liguria"]
-NE_REGIONS = ["Veneto", "Emilia Romagna", "Friuli Venezia Giulia", "P.A. Bolzano", "P.A. Trento"]
+NE_REGIONS = ["Veneto", "Emilia-Romagna", "Friuli Venezia Giulia", "P.A. Bolzano", "P.A. Trento"]
 C_REGIONS = ["Lazio", "Toscana", "Umbria", "Marche"]
 S_REGIONS = ["Campania", "Abruzzo", "Molise", "Campania", "Puglia", "Basilicata"]
 ISLANDS = ["Sicilia", "Sardegna"]
