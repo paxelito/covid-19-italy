@@ -4,7 +4,7 @@ from datetime import date, timedelta
 COVID_DATA_FOLDER = os.path.abspath(os.path.join('/Users/afilisetti/Documents/git-projects/COVID-19/'))
 CITIES_DATA_JSON_URI = os.path.abspath(os.path.join(COVID_DATA_FOLDER, "dati-json/dpc-covid19-ita-province.json"))
 REGIONS_DATA_JSON_URI = os.path.abspath(os.path.join(COVID_DATA_FOLDER, "dati-json/dpc-covid19-ita-regioni.json"))
-ITALY_MAP = fp = os.path.abspath(os.path.join(COVID_DATA_FOLDER, "aree/shp/dpc-covid19-ita-aree.shp"))
+ITALY_MAP = fp = os.path.abspath(os.path.join(COVID_DATA_FOLDER, "aree/shp/dpc-covid-19-ita-aree.shp"))
 
 AVG_GROWTH_RATE_WINDOW = 7
 
