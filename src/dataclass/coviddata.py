@@ -17,7 +17,7 @@ class ItalianCovidData:
 
         self.regions_data_json["data"] = pd.to_datetime(self.regions_data_json["data"]).dt.strftime('%Y-%m-%d')
         self.regions_data_json["ratio_positivi"] = self.regions_data_json["nuovi_positivi"] / self.regions_data_json["tamponi"]
-        self.regions_data_json["mortality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
+        self.regions_data_json["letality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
 
         self.today = date.today()
 
@@ -71,7 +71,7 @@ class ItalianCovidData:
 
     def plot_region_indicators(self, regions_area):
         self._plot_regions(self.cities_data_json, regions_area, 'totale_casi')
-        vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi']#, 'ratio_positivi']#, 'mortality']
+        vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi', 'letality']  # , 'ratio_positivi']#, 'letality']
         for var_of_interest in vars_of_interest:
             self._plot_regions(data=self.regions_data_json,
                                data_filter=regions_area,
