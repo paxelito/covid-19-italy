@@ -1,5 +1,4 @@
 import os
-from datetime import date, timedelta
 
 COVID_DATA_FOLDER = os.path.abspath(os.path.join('/Users/afilisetti/Documents/git-projects/COVID-19/'))
 CITIES_DATA_JSON_URI = os.path.abspath(os.path.join(COVID_DATA_FOLDER, "dati-json/dpc-covid19-ita-province.json"))

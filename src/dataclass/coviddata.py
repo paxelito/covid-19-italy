@@ -13,13 +13,13 @@ class ItalianCovidData:
 
     def __init__(self, avg_growth_rate_window=AVG_GROWTH_RATE_WINDOW):
         self.cities_data_json = pd.read_json(CITIES_DATA_JSON_URI)
-        self.cities_data_json["data"] = pd.to_datetime(self.cities_data_json["data"]).dt.strftime('%Y-%m-%d')
+        self.cities_data_json["data"] = pd.to_datetime(self.cities_data_json["data"])
         self.cities_data_json = self.cities_data_json[self.cities_data_json.denominazione_provincia != 'In fase di definizione/aggiornamento']
 
         # REGIONS
         self.regions_data_json = pd.read_json(REGIONS_DATA_JSON_URI)
         self.map_df = gpd.read_file(ITALY_MAP)
-        self.regions_data_json["data"] = pd.to_datetime(self.regions_data_json["data"]).dt.strftime('%Y-%m-%d')
+        self.regions_data_json["data"] = pd.to_datetime(self.regions_data_json["data"])
         self.regions_data_json["ratio_positivi"] = self.regions_data_json["nuovi_positivi"] / self.regions_data_json["tamponi"]
         self.regions_data_json["letality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
 
@@ -40,7 +40,8 @@ class ItalianCovidData:
 
     def show_map_cases(self, current_date=None):
         filter_time = self.today.strftime('%Y-%m-%d') if not current_date else current_date
-        today_data_json = self.cities_data_json.loc[(self.cities_data_json['data'] == filter_time) & (self.cities_data_json['sigla_provincia'] != "")]
+        today_data_json = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time) &
+                                                    (self.cities_data_json['sigla_provincia'] != "")]
         ax = self.map_df.plot(figsize=(10, 10), alpha=0.4, edgecolor='k')
         today_data_json.plot(kind="scatter",
                              x="long",
@@ -75,9 +76,9 @@ class ItalianCovidData:
         bx.set_yscale('log')
         bx.set_ylabel("log(Total Cases)")
         plt.grid(True, which="both", ls="--", c='gray')
+        ax.xaxis.set_major_formatter(DateFormatter('%m-%d'))
+        bx.xaxis.set_major_formatter(DateFormatter('%m-%d'))
         plt.draw()
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-        bx.set_xticklabels(bx.get_xticklabels(), rotation=90)
 
     def plot_region_indicators(self, regions_area):
         self._plot_regions(self.cities_data_json, regions_area, 'totale_casi')
@@ -112,9 +113,9 @@ class ItalianCovidData:
         bx.set_yscale("log")
         bx.set_ylabel(f"log({y})")
         plt.grid(True, which="both")
-        plt.draw()
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-        bx.set_xticklabels(bx.get_xticklabels(), rotation=90)
+        ax.xaxis.set_major_formatter(DateFormatter('%m-%d'))
+        bx.xaxis.set_major_formatter(DateFormatter('%m-%d'))
+        plt.show()
 
     def growth_rates(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi', grw=7):
         data = self.regions_data_json if regions else self.cities_data_json
