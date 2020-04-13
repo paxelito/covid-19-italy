@@ -14,6 +14,7 @@ class ItalianCovidData:
     def __init__(self, avg_growth_rate_window=AVG_GROWTH_RATE_WINDOW):
         self.cities_data_json = pd.read_json(CITIES_DATA_JSON_URI)
         self.cities_data_json["data"] = pd.to_datetime(self.cities_data_json["data"]).dt.strftime('%Y-%m-%d')
+        self.cities_data_json = self.cities_data_json[self.cities_data_json.denominazione_provincia != 'In fase di definizione/aggiornamento']
 
         # REGIONS
         self.regions_data_json = pd.read_json(REGIONS_DATA_JSON_URI)
@@ -21,6 +22,10 @@ class ItalianCovidData:
         self.regions_data_json["data"] = pd.to_datetime(self.regions_data_json["data"]).dt.strftime('%Y-%m-%d')
         self.regions_data_json["ratio_positivi"] = self.regions_data_json["nuovi_positivi"] / self.regions_data_json["tamponi"]
         self.regions_data_json["letality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
+
+        # LOAD POPULATION
+        self.population = pd.read_csv("../data/province2.csv", sep=",", header=0, index_col='Provincia')
+        self.population = self.population.loc[self.population['Età'] == 'Totale']
 
         self.today = date.today()
 
@@ -30,6 +35,8 @@ class ItalianCovidData:
         print(self.regions_data_json.info())
         print("\n --- CITIES DATASET --- \n")
         print(self.cities_data_json.info())
+        print("\n --- METADATA --- \n")
+        print(self.population.info())
 
     def show_map_cases(self, current_date=None):
         filter_time = self.today.strftime('%Y-%m-%d') if not current_date else current_date
@@ -46,6 +53,32 @@ class ItalianCovidData:
                              colorbar=True,
                              ax=ax)
 
+    def plot_region(self, region):
+        plt.figure(figsize=(20, 10))
+        plt.subplot(1, 2, 1)
+        ax = sns.lineplot(x="data",
+                          y="totale_casi",
+                          hue="sigla_provincia",
+                          linestyle='dotted',
+                          marker="o",
+                          data=self.cities_data_json.query(f"denominazione_regione == '{region}'"),
+                          )
+        plt.subplot(1, 2, 2)
+        ax.set_ylabel("Total Cases")
+        bx = sns.lineplot(x="data",
+                          y="totale_casi",
+                          hue="sigla_provincia",
+                          linestyle='dotted',
+                          marker="o",
+                          data=self.cities_data_json.query(f"denominazione_regione == '{region}'"),
+                          )
+        bx.set_yscale('log')
+        bx.set_ylabel("log(Total Cases)")
+        plt.grid(True, which="both", ls="--", c='gray')
+        plt.draw()
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+        bx.set_xticklabels(bx.get_xticklabels(), rotation=90)
+
     def plot_region_indicators(self, regions_area):
         self._plot_regions(self.cities_data_json, regions_area, 'totale_casi')
         vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi', 'letality']  # , 'ratio_positivi']#, 'letality']
@@ -56,11 +89,6 @@ class ItalianCovidData:
 
     @staticmethod
     def _plot_regions(data, data_filter, y='totale_casi'):
-        data = data.pivot(index='data', columns=data_filter, values=y)
-        cols = list(data.columns)
-        data = data.reset_index('data')
-        data.set_index(['data'], inplace=True)
-        data.columns = cols
 
         plt.figure(figsize=(20, 10))
         plt.subplot(1, 2, 1)
