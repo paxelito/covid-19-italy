@@ -12,20 +12,32 @@ from src.config import CITIES_DATA_JSON_URI, REGIONS_DATA_JSON_URI, ITALY_MAP, A
 class ItalianCovidData:
 
     def __init__(self, avg_growth_rate_window=AVG_GROWTH_RATE_WINDOW):
+        # LOAD POPULATION PER CITIES
+        self.population = pd.read_csv("../data/province2.csv", sep=",", header=0, index_col='Provincia')
+        self.population = self.population.loc[self.population['Età'] == 'Totale']
+
+        # LOAD REGIONAL POPULATION
+        self.regional_population = pd.read_csv("../data/regioni.tsv", sep="\t", header=0, index_col='regione')
+
+        # CITIES
         self.cities_data_json = pd.read_json(CITIES_DATA_JSON_URI)
         self.cities_data_json["data"] = pd.to_datetime(self.cities_data_json["data"])
         self.cities_data_json = self.cities_data_json[self.cities_data_json.denominazione_provincia != 'In fase di definizione/aggiornamento']
 
         # REGIONS
         self.regions_data_json = pd.read_json(REGIONS_DATA_JSON_URI)
+        self.regions_data_json = pd.merge(
+            left=self.regions_data_json,
+            right=self.regional_population,
+            how='inner',
+            left_on='denominazione_regione',
+            right_on=self.regional_population.index
+        )
         self.map_df = gpd.read_file(ITALY_MAP)
         self.regions_data_json["data"] = pd.to_datetime(self.regions_data_json["data"])
         self.regions_data_json["ratio_positivi"] = self.regions_data_json["nuovi_positivi"] / self.regions_data_json["tamponi"]
-        self.regions_data_json["letality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
-
-        # LOAD POPULATION
-        self.population = pd.read_csv("../data/province2.csv", sep=",", header=0, index_col='Provincia')
-        self.population = self.population.loc[self.population['Età'] == 'Totale']
+        self.regions_data_json["fatality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
+        self.regions_data_json["mortalityX1000"] = self.regions_data_json["deceduti"] / self.regions_data_json["popolazione"] * 1000
 
         self.today = date.today()
 
@@ -37,6 +49,7 @@ class ItalianCovidData:
         print(self.cities_data_json.info())
         print("\n --- METADATA --- \n")
         print(self.population.info())
+        print(self.regional_population.info())
 
     def show_map_cases(self, current_date=None):
         filter_time = self.today.strftime('%Y-%m-%d') if not current_date else current_date
@@ -82,7 +95,7 @@ class ItalianCovidData:
 
     def plot_region_indicators(self, regions_area):
         self._plot_regions(self.cities_data_json, regions_area, 'totale_casi')
-        vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi', 'letality']  # , 'ratio_positivi']#, 'letality']
+        vars_of_interest = ['totale_casi', 'deceduti', 'terapia_intensiva', 'tamponi', 'fatality', 'mortalityX1000']
         for var_of_interest in vars_of_interest:
             self._plot_regions(data=self.regions_data_json,
                                data_filter=regions_area,
