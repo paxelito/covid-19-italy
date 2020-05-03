@@ -10,6 +10,9 @@ from src.config import CITIES_DATA_JSON_URI, REGIONS_DATA_JSON_URI, ITALY_MAP, A
 
 
 class ItalianCovidData:
+    """
+    Class containing all the methods to compute analysis
+    """
 
     def __init__(self, avg_growth_rate_window=AVG_GROWTH_RATE_WINDOW):
         # LOAD POPULATION PER CITIES
@@ -94,7 +97,9 @@ class ItalianCovidData:
         plt.draw()
 
     def plot_region_indicators(self, regions_area):
-        self._plot_regions(self.cities_data_json, regions_area, 'totale_casi')
+        self._plot_regions(data=self.cities_data_json,
+                           data_filter=regions_area,
+                           y='totale_casi')
         vars_of_interest = ['totale_casi', 'totale_positivi', 'deceduti', 'terapia_intensiva', 'tamponi', 'fatality', 'mortalityX1000']
         for var_of_interest in vars_of_interest:
             self._plot_regions(data=self.regions_data_json,
@@ -102,7 +107,7 @@ class ItalianCovidData:
                                y=var_of_interest)
 
     @staticmethod
-    def _plot_regions(data, data_filter, y='totale_casi'):
+    def _plot_regions(data: pd.DataFrame, data_filter: str, y: str = 'totale_casi') -> None:
 
         plt.figure(figsize=(20, 10))
         plt.subplot(1, 2, 1)
@@ -140,7 +145,7 @@ class ItalianCovidData:
             for idx, i in enumerate(data_area[indicator]):
                 if idx > 0:
                     if list(data_area[indicator])[idx - 1] > 1:
-                        temp_gr = i / list(data_area[indicator])[idx - 1]
+                        temp_gr = ((i / list(data_area[indicator])[idx - 1]) - 1) * 100
                         growth_rate.append((temp_gr, list(data_area['data'])[idx]))
 
             growth_rates[area]['growth_rate'] = growth_rate
@@ -163,7 +168,7 @@ class ItalianCovidData:
                 marker="o"
             )
             plt.xlabel("Date (data starts from case 0)")
-            plt.ylabel("Growth Rate")
+            plt.ylabel("Growth Rate (%)")
             plt.title(f"Daily Growth Rate ({indicator})")
         plt.legend(areas)
         plt.xticks(rotation=90)
@@ -171,7 +176,41 @@ class ItalianCovidData:
         for area in areas:
             plt.plot(growth_rates[area]['avg_growth_rate'][:], linestyle='solid', marker="o")
             plt.xlabel(f"Average growth Factor (Floating window: {grw} days) from case 0")
-            plt.ylabel("AVG Growth Factor")
+            plt.ylabel("AVG Growth Factor (%)")
             plt.title(f"AVG Daily Growth Factor ({indicator})")
         plt.legend(areas)
+        plt.draw()
+
+    def growth_factors(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi', grw=7):
+        data = self.regions_data_json if regions else self.cities_data_json
+        growth_factors = dict()
+        for area in areas:
+            data_area = data.loc[data[area_target] == area]
+            growth_rate = list()
+            growth_factors[area] = dict()
+            for idx, i in enumerate(data_area[indicator]):
+                if idx > (2 * grw):
+                    if list(data_area[indicator])[idx - (2 * grw)] > 1:
+                        delta_t1 = (i - list(data_area[indicator])[idx - grw])
+                        delta_t2 = (list(data_area[indicator])[idx - grw] - list(data_area[indicator])[idx - (2 * grw)])
+                        temp_gr = delta_t1 / delta_t2 if delta_t2 != 0 else 0
+                        growth_rate.append((temp_gr, list(data_area['data'])[idx]))
+            growth_factors[area]['growth_rate'] = growth_rate
+
+        plt.figure(figsize=(10, 10))
+        for area in areas:
+            growth_rate_n, growth_rate_date = zip(*growth_factors[area]['growth_rate'])
+            plt.plot(
+                growth_rate_date[:],
+                growth_rate_n[:],
+                linestyle='solid',
+                marker="o"
+            )
+            plt.xlabel(f"Date (data start {2*grw} days after case 0)")
+            plt.ylabel("Growth Factor")
+            plt.title(f"Growth Factor ({indicator})")
+            plt.suptitle(f"$(X_t-X_{{t-{grw}}})/(X_{{t-{grw}}}-X_{{t-{2*grw}}})$")
+        plt.legend(areas)
+        plt.axhline(y=1, linewidth=4, color='r')
+        plt.xticks(rotation=90)
         plt.draw()
