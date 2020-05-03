@@ -56,16 +56,28 @@ class ItalianCovidData:
 
     def show_map_cases(self, current_date=None):
         filter_time = self.today.strftime('%Y-%m-%d') if not current_date else current_date
+        filter_time_7 = str(date.today() - timedelta(days=7))
+        filter_time_15 = str(date.today() - timedelta(days=15))
         today_data_json = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time) &
                                                     (self.cities_data_json['sigla_provincia'] != "")]
-        ax = self.map_df.plot(figsize=(10, 10), alpha=0.4, edgecolor='k')
+        today_data_json_7 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time_7) &
+                                                      (self.cities_data_json['sigla_provincia'] != "")]
+        today_data_json_15 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time_15) &
+                                                       (self.cities_data_json['sigla_provincia'] != "")]
+
+        data_temp = pd.merge(today_data_json, today_data_json_7[['codice_provincia', 'totale_casi']], on='codice_provincia')
+        data = pd.merge(data_temp, today_data_json_15[['codice_provincia', 'totale_casi']], on='codice_provincia')
+
+        data['growth_factor'] = (data['totale_casi_x'] - data['totale_casi_y']) / (data['totale_casi_y'] - data['totale_casi'])
+
+        ax = self.map_df.plot(figsize=(20, 20), alpha=0.4, edgecolor='k')
         today_data_json.plot(kind="scatter",
                              x="long",
                              y="lat",
                              alpha=0.5,
-                             s=today_data_json["totale_casi"] / 5,
-                             label="Totale Casi", figsize=(10, 7),
-                             c=today_data_json["totale_casi"],
+                             s=data["growth_factor"] * 100,
+                             label="Growth Factor", figsize=(10, 7),
+                             c=data["growth_factor"],
                              cmap=plt.get_cmap("jet"),
                              colorbar=True,
                              ax=ax)
@@ -181,36 +193,41 @@ class ItalianCovidData:
         plt.legend(areas)
         plt.draw()
 
-    def growth_factors(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi', grw=7):
+    def growth_factors(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi', grw=(7, )):
         data = self.regions_data_json if regions else self.cities_data_json
         growth_factors = dict()
         for area in areas:
             data_area = data.loc[data[area_target] == area]
-            growth_rate = list()
             growth_factors[area] = dict()
-            for idx, i in enumerate(data_area[indicator]):
-                if idx > (2 * grw):
-                    if list(data_area[indicator])[idx - (2 * grw)] > 1:
-                        delta_t1 = (i - list(data_area[indicator])[idx - grw])
-                        delta_t2 = (list(data_area[indicator])[idx - grw] - list(data_area[indicator])[idx - (2 * grw)])
-                        temp_gr = delta_t1 / delta_t2 if delta_t2 != 0 else 0
-                        growth_rate.append((temp_gr, list(data_area['data'])[idx]))
-            growth_factors[area]['growth_rate'] = growth_rate
+            growth_factors[area]['growth_rate'] = dict()
+            for g in grw:
+                growth_rate = list()
+                for idx, i in enumerate(data_area[indicator]):
+                    if idx > (2 * g):
+                        if list(data_area[indicator])[idx - (2 * g)] > 1:
+                            delta_t1 = (i - list(data_area[indicator])[idx - g])
+                            delta_t2 = (list(data_area[indicator])[idx - g] - list(data_area[indicator])[idx - (2 * g)])
+                            temp_gr = delta_t1 / delta_t2 if delta_t2 != 0 else 0
+                            growth_rate.append((temp_gr, list(data_area['data'])[idx]))
+                growth_factors[area]['growth_rate'][g] = growth_rate
 
-        plt.figure(figsize=(10, 10))
-        for area in areas:
-            growth_rate_n, growth_rate_date = zip(*growth_factors[area]['growth_rate'])
-            plt.plot(
-                growth_rate_date[:],
-                growth_rate_n[:],
-                linestyle='solid',
-                marker="o"
-            )
-            plt.xlabel(f"Date (data start {2*grw} days after case 0)")
-            plt.ylabel("Growth Factor")
-            plt.title(f"Growth Factor ({indicator})")
-            plt.suptitle(f"$(X_t-X_{{t-{grw}}})/(X_{{t-{grw}}}-X_{{t-{2*grw}}})$")
-        plt.legend(areas)
-        plt.axhline(y=1, linewidth=4, color='r')
-        plt.xticks(rotation=90)
+        plt.figure(figsize=(10*len(grw), 10))
+        for idx, g in enumerate(grw):
+            plt.subplot(1, len(grw), idx+1)
+            for area in areas:
+                growth_rate_n, growth_rate_date = zip(*growth_factors[area]['growth_rate'][g])
+
+                plt.plot(
+                    growth_rate_date[:],
+                    growth_rate_n[:],
+                    linestyle='solid' if np.mean(growth_rate_n[-3:]) >= 1 else ':',
+                    marker="."
+                )
+                plt.xlabel(f"Date (data start {2*g} days after case 0)")
+                plt.ylabel("Growth Factor")
+                plt.title(f"$(X_t-X_{{t-{g}}})/(X_{{t-{g}}}-X_{{t-{2*g}}})$")
+            plt.suptitle(f"Growth Factor ({indicator})")
+            plt.legend(areas)
+            plt.axhline(y=1, linewidth=4, color='r')
+            plt.xticks(rotation=90)
         plt.draw()
