@@ -18,6 +18,8 @@ class ItalianCovidData:
         # LOAD POPULATION PER CITIES
         self.population = pd.read_csv("../data/province2.csv", sep=",", header=0, index_col='Provincia')
         self.population = self.population.loc[self.population['Età'] == 'Totale']
+        self.population['totale'] = self.population['Totale Maschi'] + self.population['Totale Femmine']
+        self.population.reset_index(inplace=True)
 
         # LOAD REGIONAL POPULATION
         self.regional_population = pd.read_csv("../data/regioni.tsv", sep="\t", header=0, index_col='regione')
@@ -41,8 +43,32 @@ class ItalianCovidData:
         self.regions_data_json["ratio_positivi"] = self.regions_data_json["nuovi_positivi"] / self.regions_data_json["tamponi"]
         self.regions_data_json["fatality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
         self.regions_data_json["mortalityX1000"] = self.regions_data_json["deceduti"] / self.regions_data_json["popolazione"] * 1000
-
         self.today = date.today()
+        self.set_cities_data_today()
+
+    def set_cities_data_today(self):
+        filter_time = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+        filter_time_7 = str(date.today() - timedelta(days=7))
+        filter_time_15 = str(date.today() - timedelta(days=15))
+        today_data_json = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time) &
+                                                    (self.cities_data_json['sigla_provincia'] != "")]
+        today_data_json_7 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time_7) &
+                                                      (self.cities_data_json['sigla_provincia'] != "")]
+        today_data_json_15 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time_15) &
+                                                       (self.cities_data_json['sigla_provincia'] != "")]
+
+        data_temp = pd.merge(today_data_json, today_data_json_7[['codice_provincia', 'totale_casi']], on='codice_provincia')
+        cities_data_today = pd.merge(data_temp, today_data_json_15[['codice_provincia', 'totale_casi']], on='codice_provincia')
+
+        cities_data_today['growth_factor'] = (cities_data_today['totale_casi_x'] - cities_data_today['totale_casi_y']) /\
+                                             (cities_data_today['totale_casi_y'] - cities_data_today['totale_casi'])
+
+        self.cities_data_today = cities_data_today.merge(self.population[['Provincia', 'Totale Maschi', 'Totale Femmine', 'totale']],
+                                                         left_on="denominazione_provincia",
+                                                         right_on="Provincia"
+                                                         )
+
+        self.cities_data_today['incidence'] = self.cities_data_today['totale_casi_x'] / self.cities_data_today['totale']  * 1000
 
     def data_summary(self):
         print(f"--- Latest Update: {self.today} ---\n")
@@ -55,32 +81,18 @@ class ItalianCovidData:
         print(self.regional_population.info())
 
     def show_map_cases(self, current_date=None):
-        filter_time = self.today.strftime('%Y-%m-%d') if not current_date else current_date
-        filter_time_7 = str(date.today() - timedelta(days=7))
-        filter_time_15 = str(date.today() - timedelta(days=15))
-        today_data_json = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time) &
-                                                    (self.cities_data_json['sigla_provincia'] != "")]
-        today_data_json_7 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time_7) &
-                                                      (self.cities_data_json['sigla_provincia'] != "")]
-        today_data_json_15 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time_15) &
-                                                       (self.cities_data_json['sigla_provincia'] != "")]
-
-        data_temp = pd.merge(today_data_json, today_data_json_7[['codice_provincia', 'totale_casi']], on='codice_provincia')
-        data = pd.merge(data_temp, today_data_json_15[['codice_provincia', 'totale_casi']], on='codice_provincia')
-
-        data['growth_factor'] = (data['totale_casi_x'] - data['totale_casi_y']) / (data['totale_casi_y'] - data['totale_casi'])
 
         ax = self.map_df.plot(figsize=(20, 20), alpha=0.4, edgecolor='k')
-        today_data_json.plot(kind="scatter",
-                             x="long",
-                             y="lat",
-                             alpha=0.5,
-                             s=data["growth_factor"] * 100,
-                             label="Growth Factor", figsize=(10, 7),
-                             c=data["growth_factor"],
-                             cmap=plt.get_cmap("jet"),
-                             colorbar=True,
-                             ax=ax)
+        self.cities_data_today.plot(kind="scatter",
+                                    x="long",
+                                    y="lat",
+                                    alpha=0.5,
+                                    s=self.cities_data_today["growth_factor"] * 100,
+                                    label="Growth Factor", figsize=(10, 7),
+                                    c=self.cities_data_today["growth_factor"],
+                                    cmap=plt.get_cmap("jet"),
+                                    colorbar=True,
+                                    ax=ax)
 
     def plot_region(self, region):
         plt.figure(figsize=(20, 10))
@@ -193,7 +205,7 @@ class ItalianCovidData:
         plt.legend(areas)
         plt.draw()
 
-    def growth_factors(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi', grw=(7, )):
+    def growth_factors(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi', grw=(7,)):
         data = self.regions_data_json if regions else self.cities_data_json
         growth_factors = dict()
         for area in areas:
@@ -211,9 +223,9 @@ class ItalianCovidData:
                             growth_rate.append((temp_gr, list(data_area['data'])[idx]))
                 growth_factors[area]['growth_rate'][g] = growth_rate
 
-        plt.figure(figsize=(10*len(grw), 10))
+        plt.figure(figsize=(10 * len(grw), 10))
         for idx, g in enumerate(grw):
-            plt.subplot(1, len(grw), idx+1)
+            plt.subplot(1, len(grw), idx + 1)
             for area in areas:
                 growth_rate_n, growth_rate_date = zip(*growth_factors[area]['growth_rate'][g])
 
@@ -223,9 +235,9 @@ class ItalianCovidData:
                     linestyle='solid' if np.mean(growth_rate_n[-3:]) >= 1 else ':',
                     marker="."
                 )
-                plt.xlabel(f"Date (data start {2*g} days after case 0)")
+                plt.xlabel(f"Date (data start {2 * g} days after case 0)")
                 plt.ylabel("Growth Factor")
-                plt.title(f"$(X_t-X_{{t-{g}}})/(X_{{t-{g}}}-X_{{t-{2*g}}})$")
+                plt.title(f"$(X_t-X_{{t-{g}}})/(X_{{t-{g}}}-X_{{t-{2 * g}}})$")
             plt.suptitle(f"Growth Factor ({indicator})")
             plt.legend(areas)
             plt.axhline(y=1, linewidth=4, color='r')
