@@ -46,29 +46,96 @@ class ItalianCovidData:
         self.today = date.today()
         self.set_cities_data_today()
 
-    def set_cities_data_today(self):
-        filter_time = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
-        filter_time_7 = str(date.today() - timedelta(days=8))
-        filter_time_15 = str(date.today() - timedelta(days=15))
-        today_data_json = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time) &
+    def set_cities_data_today(self, day_window=7, days_before=0):
+        # Set the different filter times
+        filter_times = [str(date.today() - timedelta(days=(day_window * x + days_before))) for x in range(0, 4)]
+
+        ''' Procedure 2 under investigation 
+        cities_data_df = [self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == x) &
+                                                    (self.cities_data_json['sigla_provincia'] != "")][['codice_provincia', 'totale_casi']].rename(columns={
+            "totale_casi": f"totale_casi_{idx}"}) for idx, x in enumerate(filter_times)]
+
+        merge = partial(pd.merge, on=['codice_provincia'], how='inner')
+        cities_data_today_2 = reduce(merge, cities_data_df)
+        '''
+
+        # Filter global data for times
+        today_data_json = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[0]) &
                                                     (self.cities_data_json['sigla_provincia'] != "")]
-        today_data_json_7 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time_7) &
+        today_data_json_7 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[1]) &
                                                       (self.cities_data_json['sigla_provincia'] != "")]
-        today_data_json_15 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_time_15) &
+        today_data_json_15 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[2]) &
+                                                       (self.cities_data_json['sigla_provincia'] != "")]
+        today_data_json_22 = self.cities_data_json.loc[(pd.to_datetime(self.cities_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[3]) &
                                                        (self.cities_data_json['sigla_provincia'] != "")]
 
-        data_temp = pd.merge(today_data_json, today_data_json_7[['codice_provincia', 'totale_casi']], on='codice_provincia')
-        cities_data_today = pd.merge(data_temp, today_data_json_15[['codice_provincia', 'totale_casi']], on='codice_provincia')
+        # Merge together cities data
+        cities_data_today = pd.merge(today_data_json, today_data_json_7[['codice_provincia', 'totale_casi']], on='codice_provincia', suffixes=("_0", f"_{day_window}"))
+        cities_data_today = pd.merge(cities_data_today, today_data_json_15[['codice_provincia', 'totale_casi']], on='codice_provincia').rename(
+            columns={'totale_casi': f'totale_casi_{day_window * 2}'})
+        cities_data_today = pd.merge(cities_data_today, today_data_json_22[['codice_provincia', 'totale_casi']], on='codice_provincia').rename(
+            columns={'totale_casi': f'totale_casi_{day_window * 3}'})
 
-        cities_data_today['growth_factor'] = (cities_data_today['totale_casi_x'] - cities_data_today['totale_casi_y']) / \
-                                             (cities_data_today['totale_casi_y'] - cities_data_today['totale_casi'])
+        # filter province data on data
+        today_province_json = self.regions_data_json.loc[(pd.to_datetime(self.regions_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[0])]
+        today_province_json_7 = self.regions_data_json.loc[(pd.to_datetime(self.regions_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[1])]
+        today_province_json_15 = self.regions_data_json.loc[(pd.to_datetime(self.regions_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[2])]
+        today_province_json_22 = self.regions_data_json.loc[(pd.to_datetime(self.regions_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[3])]
 
+        # merge together province data
+        province_data_today = pd.merge(today_province_json, today_province_json_7[['codice_regione', 'tamponi', 'popolazione']], on=['codice_regione', 'popolazione'],
+                                       suffixes=("_0", f"_{day_window}"))
+        province_data_today = pd.merge(province_data_today, today_province_json_15[['codice_regione', 'tamponi', 'popolazione']], on=['codice_regione', 'popolazione']).rename(
+            columns={'tamponi': f'tamponi_{day_window * 2}'})
+        province_data_today = pd.merge(province_data_today, today_province_json_22[['codice_regione', 'tamponi', 'popolazione']], on=['codice_regione', 'popolazione']).rename(
+            columns={'tamponi': f'tamponi_{day_window * 3}'})
+
+        # merge province data into cities data
+        cities_data_today = pd.merge(cities_data_today, province_data_today[['codice_regione',
+                                                                             'popolazione',
+                                                                             f'tamponi_{day_window * 0}',
+                                                                             f'tamponi_{day_window * 1}',
+                                                                             f'tamponi_{day_window * 2}',
+                                                                             f'tamponi_{day_window * 3}']],
+                                     left_on='codice_regione',
+                                     right_on='codice_regione')
+
+        # Merge province data into cities
         self.cities_data_today = cities_data_today.merge(self.population[['Provincia', 'Totale Maschi', 'Totale Femmine', 'totale']],
                                                          left_on="denominazione_provincia",
                                                          right_on="Provincia"
                                                          )
 
-        self.cities_data_today['incidence'] = self.cities_data_today['totale_casi_x'] / self.cities_data_today['totale'] * 1000
+        # ASSUMPTION Adjust tamponi proportionally to region population
+        self.cities_data_today[f'tamponi_{day_window * 0}'] = self.cities_data_today[f'tamponi_{day_window * 0}'] / \
+                                                              self.cities_data_today['popolazione'] * self.cities_data_today['totale']
+        self.cities_data_today[f'tamponi_{day_window * 1}'] = self.cities_data_today[f'tamponi_{day_window * 1}'] / \
+                                                              self.cities_data_today['popolazione'] * self.cities_data_today['totale']
+        self.cities_data_today[f'tamponi_{day_window * 2}'] = self.cities_data_today[f'tamponi_{day_window * 2}'] / \
+                                                              self.cities_data_today['popolazione'] * self.cities_data_today['totale']
+        self.cities_data_today[f'tamponi_{day_window * 3}'] = self.cities_data_today[f'tamponi_{day_window * 3}'] / \
+                                                              self.cities_data_today['popolazione'] * self.cities_data_today['totale']
+
+        # Compute growth factors
+        self.cities_data_today['growth_factor'] = (self.cities_data_today[f'totale_casi_{day_window * 0}'] - self.cities_data_today[f'totale_casi_{day_window * 1}']) / \
+                                                  (self.cities_data_today[f'totale_casi_{day_window * 1}'] - self.cities_data_today[f'totale_casi_{day_window * 2}'])
+
+        self.cities_data_today['growth_factor_prec'] = (self.cities_data_today[f'totale_casi_{day_window * 1}'] - self.cities_data_today[f'totale_casi_{day_window * 2}']) / \
+                                                       (self.cities_data_today[f'totale_casi_{day_window * 2}'] - self.cities_data_today[f'totale_casi_{day_window * 3}'])
+
+        # Compute normalized growth factors
+        self.cities_data_today['growth_factor_norm'] = ((self.cities_data_today[f'totale_casi_{day_window * 0}'] - self.cities_data_today[f'totale_casi_{day_window * 1}']) /
+                                                        (self.cities_data_today[f'tamponi_{day_window * 0}'] - self.cities_data_today[f'tamponi_{day_window * 1}'])) / \
+                                                       ((self.cities_data_today[f'totale_casi_{day_window * 1}'] - self.cities_data_today[f'totale_casi_{day_window * 2}']) /
+                                                        (self.cities_data_today[f'tamponi_{day_window * 1}'] - self.cities_data_today[f'tamponi_{day_window * 2}']))
+
+        self.cities_data_today['growth_factor_prec_norm'] = ((self.cities_data_today[f'totale_casi_{day_window * 1}'] - self.cities_data_today[f'totale_casi_{day_window * 2}']) /
+                                                             (self.cities_data_today[f'tamponi_{day_window * 1}'] - self.cities_data_today[f'tamponi_{day_window * 2}'])) / \
+                                                            ((self.cities_data_today[f'totale_casi_{day_window * 2}'] - self.cities_data_today[f'totale_casi_{day_window * 3}']) /
+                                                             (self.cities_data_today[f'tamponi_{day_window * 2}'] - self.cities_data_today[f'tamponi_{day_window * 3}']))
+
+        self.cities_data_today['incidence'] = self.cities_data_today[f'totale_casi_{day_window * 0}'] / self.cities_data_today['totale'] * 1000
+        self.cities_data_today['incidence_prec'] = self.cities_data_today[f'totale_casi_{day_window * 1}'] / self.cities_data_today['totale'] * 1000
 
     def data_summary(self):
         print(f"--- Latest Update: {self.today} ---\n")
@@ -94,46 +161,55 @@ class ItalianCovidData:
                                     colorbar=True,
                                     ax=ax)
 
-    def scatter_gf_incidence(self, regioni=None):
+    def scatter_gf_incidence(self, regioni=None, norm=True):
         data_temp = self.cities_data_today.loc[self.cities_data_today['denominazione_regione'].isin(regioni)] if regioni else self.cities_data_today
+
+        norm = '_norm' if norm else ''
 
         data = data_temp.rename(columns={
             "denominazione_regione": "regione",
-            "totale": "popolazione"})
+            "totale": "popolazione_province"})
 
         plt.figure(figsize=(20, 20))
 
         ax = sns.scatterplot(x='incidence',
-                             y='growth_factor',
+                             y=f'growth_factor{norm}',
                              hue='regione',
                              data=data,
                              alpha=0.8,
-                             size='popolazione',
+                             size='totale_casi_0',
                              sizes=(20, 500))
 
-        ax.axhline(np.mean(list(data['growth_factor'][~np.isinf(data['growth_factor'])])), linestyle=":")
+        ax.axhline(np.mean(list(data[f'growth_factor{norm}'][~np.isinf(data[f'growth_factor{norm}'])])), linestyle=":")
         ax.axhline(1, color="r", linestyle=":")
         ax.axvline(np.mean(list(data['incidence'])), linestyle=":")
         ax.set_xlabel("Contagious X 1000 inhabitants")
-        ax.set_ylabel(f"Growth factor ($(X_t-X_{7})/(X_{7}-X_{15})$)")
+        ax.set_ylabel(f"Growth factor{norm} ($(X_t-X_{{7}})/(X_{{7}}-X_{{15}})$)")
+        ax.set_title(f"Growth Factor{norm} vs Incidence")
 
         ax.annotate("Inflection Point",
                     (max(list(data['incidence'])) * 0.8, 1),
                     color='red',
                     fontsize=15)
         ax.annotate("avg(incidence)",
-                    (np.mean(list(data['incidence'])), max(list(data['growth_factor'])) * 0.9),
+                    (np.mean(list(data['incidence'])), max(list(data[f'growth_factor{norm}'])) * 0.9),
                     color='blue',
                     fontsize=15
                     )
-        ax.annotate("avg(growth factor)",
-                    (max(list(data['incidence'])) * 0.8, np.mean(list(data['growth_factor']))),
+        ax.annotate(f"avg(growth factor{norm})",
+                    (max(list(data['incidence'])) * 0.8, np.mean(list(data[f'growth_factor{norm}']))),
                     color='blue',
                     fontsize=15
                     )
 
         for i, txt in enumerate(list(data['Provincia'])):
-            ax.annotate(txt, (list(data['incidence'])[i], list(data['growth_factor'])[i]))
+            ax.annotate(txt, (list(data['incidence'])[i], list(data[f'growth_factor{norm}'])[i]))
+            color = 'green' if list(data[f'growth_factor{norm}'])[i] < list(data[f'growth_factor_prec{norm}'])[i] else "red"
+            ax.annotate('',
+                        xy=(list(data['incidence'])[i], list(data[f'growth_factor{norm}'])[i]),
+                        xytext=(list(data['incidence_prec'])[i], list(data[f'growth_factor_prec{norm}'])[i]),
+                        arrowprops={'arrowstyle': '->', 'lw': 1, 'color': color, 'ls': "dotted"},
+                        va='center')
 
     def plot_region(self, region):
         plt.figure(figsize=(20, 10))
