@@ -329,7 +329,7 @@ class ItalianCovidData:
         for area in areas:
             data_area = data.loc[data[area_target] == area]
             growth_factors[area] = dict()
-            growth_factors[area]['growth_rate'] = dict()
+            growth_factors[area]['growth_factor'] = dict()
             for g in grw:
                 growth_rate = list()
                 for idx, i in enumerate(data_area[indicator]):
@@ -339,13 +339,13 @@ class ItalianCovidData:
                             delta_t2 = (list(data_area[indicator])[idx - g] - list(data_area[indicator])[idx - (2 * g)])
                             temp_gr = delta_t1 / delta_t2 if delta_t2 != 0 else 0
                             growth_rate.append((temp_gr, list(data_area['data'])[idx]))
-                growth_factors[area]['growth_rate'][g] = growth_rate
+                growth_factors[area]['growth_factor'][g] = growth_rate
 
         plt.figure(figsize=(10 * len(grw), 10))
         for idx, g in enumerate(grw):
             plt.subplot(1, len(grw), idx + 1)
             for area in areas:
-                growth_rate_n, growth_rate_date = zip(*growth_factors[area]['growth_rate'][g])
+                growth_rate_n, growth_rate_date = zip(*growth_factors[area]['growth_factor'][g])
 
                 plt.plot(
                     growth_rate_date[:],
@@ -354,9 +354,9 @@ class ItalianCovidData:
                     marker="."
                 )
                 plt.xlabel(f"Date (data start {2 * g} days after case 0)")
-                plt.ylabel("Growth Factor")
+                plt.ylabel("Norm Growth Factor")
                 plt.title(f"$(X_t-X_{{t-{g}}})/(X_{{t-{g}}}-X_{{t-{2 * g}}})$")
-            plt.suptitle(f"Growth Factor ({indicator})")
+            plt.suptitle(f"Norm Growth Factor ({indicator})")
             plt.legend(areas)
             plt.axhline(y=1, linewidth=4, color='r')
             plt.xticks(rotation=90)
