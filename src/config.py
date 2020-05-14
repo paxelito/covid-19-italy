@@ -17,4 +17,3 @@ CITIES_LOMBARDIA = ['Bergamo', 'Brescia', 'Milano', 'Lodi', 'Monza e della Brian
 CITIES_EMILIA = ['Piacenza', "Reggio nell'Emilia", 'Ravenna', 'Ferrara', 'Modena', 'Forlì-Cesena', 'Bologna', 'Parma', 'Rimini']
 CITIES_VENETO = ['Padova', 'Rovigo', 'Treviso', 'Verona', 'Belluno', 'Vicenza', 'Venezia']
 CITIES_CAMPANIA = ['Napoli', 'Benevento', 'Avellino', 'Salerno', 'Caserta']
-
