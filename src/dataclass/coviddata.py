@@ -40,7 +40,7 @@ class ItalianCovidData:
         )
         self.map_df = gpd.read_file(ITALY_MAP)
         self.regions_data_json["data"] = pd.to_datetime(self.regions_data_json["data"])
-        self.regions_data_json["ratio_positivi"] = self.regions_data_json["totale_casi"] / self.regions_data_json["tamponi"]
+        self.regions_data_json["ratio_positivi"] = self.regions_data_json["totale_casi"] / self.regions_data_json["casi_testati"]
         self.regions_data_json["fatality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
         self.regions_data_json["mortalityX1000"] = self.regions_data_json["deceduti"] / self.regions_data_json["popolazione"] * 1000
         self.today = date.today()
@@ -83,20 +83,20 @@ class ItalianCovidData:
         today_province_json_22 = self.regions_data_json.loc[(pd.to_datetime(self.regions_data_json['data']).dt.strftime('%Y-%m-%d') == filter_times[3])]
 
         # merge together province data
-        province_data_today = pd.merge(today_province_json, today_province_json_7[['codice_regione', 'tamponi', 'popolazione']], on=['codice_regione', 'popolazione'],
+        province_data_today = pd.merge(today_province_json, today_province_json_7[['codice_regione', 'casi_testati', 'popolazione']], on=['codice_regione', 'popolazione'],
                                        suffixes=("_0", f"_{day_window}"))
-        province_data_today = pd.merge(province_data_today, today_province_json_15[['codice_regione', 'tamponi', 'popolazione']], on=['codice_regione', 'popolazione']).rename(
-            columns={'tamponi': f'tamponi_{day_window * 2}'})
-        province_data_today = pd.merge(province_data_today, today_province_json_22[['codice_regione', 'tamponi', 'popolazione']], on=['codice_regione', 'popolazione']).rename(
-            columns={'tamponi': f'tamponi_{day_window * 3}'})
+        province_data_today = pd.merge(province_data_today, today_province_json_15[['codice_regione', 'casi_testati', 'popolazione']], on=['codice_regione', 'popolazione']).rename(
+            columns={'casi_testati': f'casi_testati_{day_window * 2}'})
+        province_data_today = pd.merge(province_data_today, today_province_json_22[['codice_regione', 'casi_testati', 'popolazione']], on=['codice_regione', 'popolazione']).rename(
+            columns={'casi_testati': f'casi_testati_{day_window * 3}'})
 
         # merge province data into cities data
         cities_data_today = pd.merge(cities_data_today, province_data_today[['codice_regione',
                                                                              'popolazione',
-                                                                             f'tamponi_{day_window * 0}',
-                                                                             f'tamponi_{day_window * 1}',
-                                                                             f'tamponi_{day_window * 2}',
-                                                                             f'tamponi_{day_window * 3}']],
+                                                                             f'casi_testati_{day_window * 0}',
+                                                                             f'casi_testati_{day_window * 1}',
+                                                                             f'casi_testati_{day_window * 2}',
+                                                                             f'casi_testati_{day_window * 3}']],
                                      left_on='codice_regione',
                                      right_on='codice_regione')
 
@@ -106,14 +106,14 @@ class ItalianCovidData:
                                                          right_on="Provincia"
                                                          )
 
-        # ASSUMPTION Adjust tamponi proportionally to region population
-        self.cities_data_today[f'tamponi_{day_window * 0}'] = self.cities_data_today[f'tamponi_{day_window * 0}'] / \
+        # ASSUMPTION Adjust casi_testati proportionally to region population
+        self.cities_data_today[f'casi_testati_{day_window * 0}'] = self.cities_data_today[f'casi_testati_{day_window * 0}'] / \
                                                               self.cities_data_today['popolazione'] * self.cities_data_today['totale']
-        self.cities_data_today[f'tamponi_{day_window * 1}'] = self.cities_data_today[f'tamponi_{day_window * 1}'] / \
+        self.cities_data_today[f'casi_testati_{day_window * 1}'] = self.cities_data_today[f'casi_testati_{day_window * 1}'] / \
                                                               self.cities_data_today['popolazione'] * self.cities_data_today['totale']
-        self.cities_data_today[f'tamponi_{day_window * 2}'] = self.cities_data_today[f'tamponi_{day_window * 2}'] / \
+        self.cities_data_today[f'casi_testati_{day_window * 2}'] = self.cities_data_today[f'casi_testati_{day_window * 2}'] / \
                                                               self.cities_data_today['popolazione'] * self.cities_data_today['totale']
-        self.cities_data_today[f'tamponi_{day_window * 3}'] = self.cities_data_today[f'tamponi_{day_window * 3}'] / \
+        self.cities_data_today[f'casi_testati_{day_window * 3}'] = self.cities_data_today[f'casi_testati_{day_window * 3}'] / \
                                                               self.cities_data_today['popolazione'] * self.cities_data_today['totale']
 
         # Compute growth factors
@@ -125,14 +125,14 @@ class ItalianCovidData:
 
         # Compute normalized growth factors
         self.cities_data_today['growth_factor_norm'] = ((self.cities_data_today[f'totale_casi_{day_window * 0}'] - self.cities_data_today[f'totale_casi_{day_window * 1}']) /
-                                                        (self.cities_data_today[f'tamponi_{day_window * 0}'] - self.cities_data_today[f'tamponi_{day_window * 1}'])) / \
+                                                        (self.cities_data_today[f'casi_testati_{day_window * 0}'] - self.cities_data_today[f'casi_testati_{day_window * 1}'])) / \
                                                        ((self.cities_data_today[f'totale_casi_{day_window * 1}'] - self.cities_data_today[f'totale_casi_{day_window * 2}']) /
-                                                        (self.cities_data_today[f'tamponi_{day_window * 1}'] - self.cities_data_today[f'tamponi_{day_window * 2}']))
+                                                        (self.cities_data_today[f'casi_testati_{day_window * 1}'] - self.cities_data_today[f'casi_testati_{day_window * 2}']))
 
         self.cities_data_today['growth_factor_prec_norm'] = ((self.cities_data_today[f'totale_casi_{day_window * 1}'] - self.cities_data_today[f'totale_casi_{day_window * 2}']) /
-                                                             (self.cities_data_today[f'tamponi_{day_window * 1}'] - self.cities_data_today[f'tamponi_{day_window * 2}'])) / \
+                                                             (self.cities_data_today[f'casi_testati_{day_window * 1}'] - self.cities_data_today[f'casi_testati_{day_window * 2}'])) / \
                                                             ((self.cities_data_today[f'totale_casi_{day_window * 2}'] - self.cities_data_today[f'totale_casi_{day_window * 3}']) /
-                                                             (self.cities_data_today[f'tamponi_{day_window * 2}'] - self.cities_data_today[f'tamponi_{day_window * 3}']))
+                                                             (self.cities_data_today[f'casi_testati_{day_window * 2}'] - self.cities_data_today[f'casi_testati_{day_window * 3}']))
 
         self.cities_data_today['incidence'] = self.cities_data_today[f'totale_casi_{day_window * 0}'] / self.cities_data_today['totale'] * 1000
         self.cities_data_today['incidence_prec'] = self.cities_data_today[f'totale_casi_{day_window * 1}'] / self.cities_data_today['totale'] * 1000
@@ -242,7 +242,7 @@ class ItalianCovidData:
                            data_filter=regions_area,
                            y='totale_casi')
         vars_of_interest = ['totale_casi', 'totale_positivi', 'ratio_positivi', 'deceduti', 'terapia_intensiva', 'totale_ospedalizzati',
-                            'isolamento_domiciliare', 'dimessi_guariti', 'tamponi', 'fatality', 'mortalityX1000']
+                            'isolamento_domiciliare', 'dimessi_guariti', 'casi_testati', 'fatality', 'mortalityX1000']
         for var_of_interest in vars_of_interest:
             self._plot_regions(data=self.regions_data_json,
                                data_filter=regions_area,
