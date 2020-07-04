@@ -108,13 +108,13 @@ class ItalianCovidData:
 
         # ASSUMPTION Adjust casi_testati proportionally to region population
         self.cities_data_today[f'casi_testati_{day_window * 0}'] = self.cities_data_today[f'casi_testati_{day_window * 0}'] / \
-                                                              self.cities_data_today['popolazione'] * self.cities_data_today['totale']
+                                                                   self.cities_data_today['popolazione'] * self.cities_data_today['totale']
         self.cities_data_today[f'casi_testati_{day_window * 1}'] = self.cities_data_today[f'casi_testati_{day_window * 1}'] / \
-                                                              self.cities_data_today['popolazione'] * self.cities_data_today['totale']
+                                                                   self.cities_data_today['popolazione'] * self.cities_data_today['totale']
         self.cities_data_today[f'casi_testati_{day_window * 2}'] = self.cities_data_today[f'casi_testati_{day_window * 2}'] / \
-                                                              self.cities_data_today['popolazione'] * self.cities_data_today['totale']
+                                                                   self.cities_data_today['popolazione'] * self.cities_data_today['totale']
         self.cities_data_today[f'casi_testati_{day_window * 3}'] = self.cities_data_today[f'casi_testati_{day_window * 3}'] / \
-                                                              self.cities_data_today['popolazione'] * self.cities_data_today['totale']
+                                                                   self.cities_data_today['popolazione'] * self.cities_data_today['totale']
 
         # Compute growth factors
         self.cities_data_today['growth_factor'] = (self.cities_data_today[f'totale_casi_{day_window * 0}'] - self.cities_data_today[f'totale_casi_{day_window * 1}']) / \
@@ -130,7 +130,8 @@ class ItalianCovidData:
                                                         (self.cities_data_today[f'casi_testati_{day_window * 1}'] - self.cities_data_today[f'casi_testati_{day_window * 2}']))
 
         self.cities_data_today['growth_factor_prec_norm'] = ((self.cities_data_today[f'totale_casi_{day_window * 1}'] - self.cities_data_today[f'totale_casi_{day_window * 2}']) /
-                                                             (self.cities_data_today[f'casi_testati_{day_window * 1}'] - self.cities_data_today[f'casi_testati_{day_window * 2}'])) / \
+                                                             (self.cities_data_today[f'casi_testati_{day_window * 1}'] - self.cities_data_today[
+                                                                 f'casi_testati_{day_window * 2}'])) / \
                                                             ((self.cities_data_today[f'totale_casi_{day_window * 2}'] - self.cities_data_today[f'totale_casi_{day_window * 3}']) /
                                                              (self.cities_data_today[f'casi_testati_{day_window * 2}'] - self.cities_data_today[f'casi_testati_{day_window * 3}']))
 
@@ -161,7 +162,7 @@ class ItalianCovidData:
                                     colorbar=True,
                                     ax=ax)
 
-    def scatter_gf_incidence(self, regioni=None, norm=True):
+    def scatter_gf_incidence(self, regioni=None, norm=True, diffusion_threshold=64):
         data_temp = self.cities_data_today.loc[self.cities_data_today['denominazione_regione'].isin(regioni)] if regioni else self.cities_data_today
 
         norm = '_norm' if norm else ''
@@ -169,6 +170,8 @@ class ItalianCovidData:
         data = data_temp.rename(columns={
             "denominazione_regione": "regione",
             "totale": "popolazione_province"})
+
+        data = data.loc[data['totale_casi_0'] - data['totale_casi_7'] > diffusion_threshold]
 
         plt.figure(figsize=(20, 20))
 
@@ -185,7 +188,7 @@ class ItalianCovidData:
         ax.axvline(np.mean(list(data['incidence'])), linestyle=":")
         ax.set_xlabel("Contagious X 1000 inhabitants")
         ax.set_ylabel(f"Growth factor{norm} ($(X_t-X_{{7}})/(X_{{7}}-X_{{15}})$)")
-        ax.set_title(f"Growth Factor{norm} vs Incidence")
+        ax.set_title(f"Growth Factor{norm} vs Incidence (data shown only if current infected > 64)")
 
         ax.annotate("Inflection Point",
                     (max(list(data['incidence'])) * 0.8, 1),
