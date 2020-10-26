@@ -41,6 +41,8 @@ class ItalianCovidData:
         self.map_df = gpd.read_file(ITALY_MAP)
         self.regions_data_json["data"] = pd.to_datetime(self.regions_data_json["data"])
         self.regions_data_json["ratio_positivi"] = self.regions_data_json["totale_casi"] / self.regions_data_json["casi_testati"]
+        self.regions_data_json["perc_casi_popolazione"] = self.regions_data_json["totale_casi"] / self.regions_data_json["popolazione"] * 100
+        self.regions_data_json["perc_intensiva_casi"] = self.regions_data_json["terapia_intensiva"] / self.regions_data_json["totale_casi"] * 100
         self.regions_data_json["fatality"] = self.regions_data_json["deceduti"] / self.regions_data_json["totale_casi"]
         self.regions_data_json["mortalityX1000"] = self.regions_data_json["deceduti"] / self.regions_data_json["popolazione"] * 1000
         self.today = date.today()
@@ -244,8 +246,9 @@ class ItalianCovidData:
         self._plot_regions(data=self.cities_data_json,
                            data_filter=regions_area,
                            y='totale_casi')
-        vars_of_interest = ['totale_casi', 'totale_positivi', 'ratio_positivi', 'deceduti', 'terapia_intensiva', 'totale_ospedalizzati',
-                            'isolamento_domiciliare', 'dimessi_guariti', 'casi_testati', 'fatality', 'mortalityX1000']
+        vars_of_interest = ['totale_casi', 'totale_positivi', 'ratio_positivi',
+                            'isolamento_domiciliare', 'totale_ospedalizzati', 'terapia_intensiva', 'deceduti',
+                            'perc_casi_popolazione', 'perc_intensiva_casi', 'fatality', 'mortalityX1000']
         for var_of_interest in vars_of_interest:
             self._plot_regions(data=self.regions_data_json,
                                data_filter=regions_area,
@@ -309,8 +312,7 @@ class ItalianCovidData:
             plt.plot(
                 growth_rate_date[:],
                 growth_rate_n[:],
-                linestyle='solid',
-                marker="o"
+                linestyle='solid'
             )
             plt.xlabel("Date (data starts from case 0)")
             plt.ylabel("Growth Rate (%)")
@@ -319,7 +321,7 @@ class ItalianCovidData:
         plt.xticks(rotation=90)
         plt.subplot(1, 2, 2)
         for area in areas:
-            plt.plot(growth_rates[area]['avg_growth_rate'][:], linestyle='solid', marker="o")
+            plt.plot(growth_rates[area]['avg_growth_rate'][:], linestyle='solid')
             plt.xlabel(f"Average growth Factor (Floating window: {grw} days) from case 0")
             plt.ylabel("AVG Growth Factor (%)")
             plt.title(f"AVG Daily Growth Factor ({indicator})")
