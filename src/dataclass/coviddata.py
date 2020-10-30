@@ -361,7 +361,7 @@ class ItalianCovidData:
                 plt.xlabel(f"Date (data start {2 * g} days after case 0)")
                 plt.ylabel("Norm Growth Factor")
                 plt.title(f"$(X_t-X_{{t-{g}}})/(X_{{t-{g}}}-X_{{t-{2 * g}}})$")
-                plt.ylim((-10, 10))
+                plt.ylim((-10, 20))
             plt.suptitle(f"Norm Growth Factor ({indicator})")
             plt.legend(areas)
             plt.axhline(y=1, linewidth=4, color='r')
