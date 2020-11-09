@@ -328,7 +328,13 @@ class ItalianCovidData:
         plt.legend(areas)
         plt.draw()
 
-    def growth_factors(self, areas, regions=True, area_target='denominazione_provincia', indicator='totale_casi', grw=(7,)):
+    def growth_factors(self,
+                       areas,
+                       regions=True,
+                       area_target='denominazione_provincia',
+                       indicator='totale_casi',
+                       grw=(7,),
+                       fix_limits=True):
         data = self.regions_data_json if regions else self.cities_data_json
         growth_factors = dict()
         for area in areas:
@@ -349,6 +355,8 @@ class ItalianCovidData:
         plt.figure(figsize=(10 * len(grw), 10))
         for idx, g in enumerate(grw):
             plt.subplot(1, len(grw), idx + 1)
+            max_l = 0
+            min_l = 0
             for area in areas:
                 growth_rate_n, growth_rate_date = zip(*growth_factors[area]['growth_factor'][g])
 
@@ -358,10 +366,15 @@ class ItalianCovidData:
                     linestyle='solid' if np.mean(growth_rate_n[-3:]) >= 1 else ':',
                     marker="."
                 )
-                plt.xlabel(f"Date (data start {2 * g} days after case 0)")
-                plt.ylabel("Norm Growth Factor")
-                plt.title(f"$(X_t-X_{{t-{g}}})/(X_{{t-{g}}}-X_{{t-{2 * g}}})$")
-                plt.ylim((-10, 20))
+                if min(growth_rate_n) < min_l:
+                    min_l = min(growth_rate_n) - (min(growth_rate_n)*0.1)
+                if max(growth_rate_n) > max_l:
+                    max_l = max(growth_rate_n) + (max(growth_rate_n)*0.1)
+
+            plt.xlabel(f"Date (data start {2 * g} days after case 0)")
+            plt.ylabel("Norm Growth Factor")
+            plt.title(f"$(X_t-X_{{t-{g}}})/(X_{{t-{g}}}-X_{{t-{2 * g}}})$")
+            plt.ylim((min_l, max_l))
             plt.suptitle(f"Norm Growth Factor ({indicator})")
             plt.legend(areas)
             plt.axhline(y=1, linewidth=4, color='r')
